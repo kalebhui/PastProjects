@@ -1,0 +1,198 @@
+<!doctype html> 
+<html lang="en"> 
+<head> 
+    <meta charset="UTF-8" />
+    <title>Happy Bird</title>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.4.0/dist/phaser.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<script type="text/javascript">
+
+	let gameScene = new Phaser.Scene('Game');
+
+	// contains physics, gravity, map size, and functions, my game needs
+	var config = {
+	type: Phaser.AUTO,
+	width: 1280,
+	height: 480,
+	physics: {
+	    default: 'arcade',
+	    arcade: {
+	        gravity: { y: 750 },
+	        debug: false
+	       }
+	},
+	scene: {
+	    preload: preload,
+	    create: create,
+	    update: update,
+	   	init: init
+	    }
+	};
+
+    var game = new Phaser.Game(config);
+
+	function init()
+	{
+		//defines player speed is 0 at start
+		playerSpeed = 0;
+	}
+
+	// loads all the images
+    function preload()
+    {
+        this.load.image('sky', 'assets game 3/sky.jpg');
+        this.load.image('bird', 'assets game 3/bird.png');
+        this.load.image('wall', 'assets game 3/walls.png');
+        this.load.image('ground', 'assets/platform.png');
+        this.load.image('goal', 'assets game 3/building.png')
+    }
+
+    function create()
+    {
+    	// tells game player is alive
+    	this.isPlayerAlive = true;
+
+    	// adds 2 background images so the image will fill the map
+        this.add.image(375, 240, 'sky');
+        this.add.image(1223, 240, 'sky');	
+
+        // adds a static physics group for the goal of the game
+  		goal = this.physics.add.staticGroup();
+  		// creating the image for where the goal image should be
+  		goal.create(this.sys.game.config.width + 50, this.sys.game.config.height / 2, 'goal');
+
+  		// this pauses the physics for now
+        this.physics.pause();
+
+        // creating another physics group which is static, called platforms.
+    	platforms = this.physics.add.staticGroup();
+
+	    // putting down a all the walls so that there will be obstacles between the beginning and the goal
+	    platforms.create(250, 570, 'wall');
+	    platforms.create(250, 50, 'wall');
+	    platforms.create(425, 400, 'wall');
+	    platforms.create(425, -120, 'wall');
+	    platforms.create(600, 520, 'wall');
+	    platforms.create(600, 0, 'wall');
+	    platforms.create(775, 120, 'wall');
+	    platforms.create(775, 640, 'wall');
+	    platforms.create(950, 400, 'wall');
+	    platforms.create(950, -120, 'wall');
+	    platforms.create(1125, 450, 'wall');
+	    platforms.create(1125, -70, 'wall');
+
+	    // adds an image for the main character, affected by physics
+	    player = this.physics.add.sprite(40, this.sys.game.config.height / 2, 'bird');
+	    // makes the main character a lot smaller
+	    player.setScale(0.07);
+
+	    // makes sure the character cannot escape the map
+	    player.setCollideWorldBounds(true);
+
+	    // adds a spacekey button, so I can use the spcae key later
+	    this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
+
+	  	// adding text that says "try again" which will pop up if you lose
+	  	loseText = this.add.text (400,200, 'TRY AGAIN', { fontSize: '80px', fill: '#f00' });
+	  	// making the text not visible for now
+	  	loseText.visible = false;
+
+	  	// adding text that says "Click Space to being" which will be visible before you start the game
+	  	gameStartsText = this.add.text (360,230, 'Click "Space" to begin', { fontSize: '40px', fill: '#ffa500' });
+	  	gameStartsText.visible = true;
+
+	  	// added text that pops up after you win (reach the goal)
+	  	winnerText = this.add.text (280,230, 'WINNER WINNER CHICKEN DINNER', { fontSize: '40px', fill: '#ffa500' });
+	  	winnerText.visible = false;
+
+	  	// add colliders so if the player hits the goal, it will call the winner function
+		this.physics.add.collider(player, goal, winner, null, this);
+		// add colliders so if the player hits a wall, it will call the dead function
+	  	this.physics.add.collider(player, platforms, dead, null, this);
+
+	   	
+    }
+
+    function update()
+    {
+
+    	// makes player move forward depending on what the player speed is
+	    player.x += playerSpeed;
+
+	    // if the space key is down, it will call all the functions before
+	    if(this.spaceKey.isDown)
+	    {
+	    	// the winner text will no longer be visible, if it was before
+	    	winnerText.visible = false;
+	    	// the game start text will also no longer be visible
+	    	gameStartsText.visible = false;
+	    	// player speed is now 2, so the character will move forward on its own
+		    playerSpeed = 2
+		    // all physics that was paused is now resumed, so if the bird wasn't affected by gravity, it will be now
+			this.physics.resume();
+			//makes it so everytime you click space, you go up by 250px
+			player.setVelocityY(-250);		
+	    }
+
+    }
+
+    function dead()
+    {
+    	// makes player's speed 0, so you won't move forward when you are dead
+	    playerSpeed = 0;
+	    // pauses all physics so you won't move when you are dead
+	    this.physics.pause();
+		// defines player = dead
+		this.isPlayerAlive = false;
+
+		// shakes camera for 0.25 sec
+		this.cameras.main.shake(250);
+
+		// makes it so you can see the lose text
+		loseText.visible = true; 
+
+		 // after 0.25 sec it will do everything listed below (this is my way to restart the game)
+		this.time.delayedCall(250, function() {
+		  	// make player go back to an x of 40
+		  	player.x = 40;
+		  	// make player go back to the middle of the y axis on the map
+		 	player.y = this.sys.game.config.height / 2;
+		 	// tells game that player is once again alive.
+		  	this.isPlayerAlive = true;
+		  	// lose text is no longer visible
+		  	loseText.visible = false; 
+		  	// the game start text is now back on the screen.
+		  	gameStartsText.visible = true;
+		 }, [], this);
+    }
+
+  	function winner()
+  	{
+  		// makes player's speed 0, so you won't move forward when you win
+  		playerSpeed = 0;
+  		// pops the win text up, because you won
+  		winnerText.visible = true
+  		// pauses all physics so you won't move when you won
+  		this.physics.pause();
+  		// calls all the fuctions below after 5 sec (reset game)
+  		this.time.delayedCall(5000, function() {
+  			// makes player go back to (40,240)
+		  	player.x = 40;
+		  	player.y = this.sys.game.config.height / 2;
+		  	// makes winner text no longer visible
+		  	winnerText.visible = false; 
+		  	// makes game start text pop up once again
+		  	gameStartsText.visible = true;
+		}, [], this);
+  	}
+
+</script>
+</body>
+</html>

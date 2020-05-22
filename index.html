@@ -1,0 +1,201 @@
+<!doctype html> 
+<html lang="en"> 
+<head> 
+    <meta charset="UTF-8" />
+    <title>Reach the Planet</title>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.2.1/dist/phaser.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<script type="text/javascript">
+let gameScene = new Phaser.Scene('Game');
+
+//gametype and width and height of game
+let config = {
+  type: Phaser.AUTO,
+  width: 1300,
+  height: 360,
+  scene: gameScene
+};
+
+// create the game and pass it through the config
+let game = new Phaser.Game(config);
+
+
+// set speeds for player and enemy and XY axis for enemies
+gameScene.init = function() {
+  this.playerSpeed = 2;
+  this.enemySpeed = 2;
+  this.enemyMaxY = 280;
+  this.enemyMinY = 80;
+}
+
+gameScene.preload = function() {
+
+  // loads images from my assets folder
+  this.load.image('background', 'assets/background.jpg');
+  this.load.image('player', 'assets/spaceship.png');
+  this.load.image('asteroid', 'assets/asteroid.png');
+  this.load.image('planet', 'assets/planet.png');
+};
+
+gameScene.create = function() {
+
+  // defining background
+  let bg = this.add.sprite(0, 0, 'background');
+
+  // setting the background origin to 0,0 so it won't be off centered
+  bg.setOrigin(0, 0);
+
+  // defining player
+  this.player = this.add.sprite(40, this.sys.game.config.height / 2, 'player');
+
+  // making my character smaller
+  this.player.setScale(0.1);
+
+  // defining goal
+  this.planet = this.add.sprite(this.sys.game.config.width - 80, this.sys.game.config.height / 2, 'planet');
+  this.planet.setScale(0.6);
+
+  cursors = this.input.keyboard.createCursorKeys();
+
+  // group of enemies
+  this.enemies = this.add.group({
+    key: 'asteroid',
+    repeat: 7,
+    setXY: {
+      x: 110,
+      y: 100,
+      stepX: 120,
+      stepY: 20
+    }
+  });
+
+  // scaling enemy's sizes
+  Phaser.Actions.ScaleXY(this.enemies.getChildren(), -0.9, -0.85);
+
+  // set speeds for enemies
+  Phaser.Actions.Call(this.enemies.getChildren(), function(enemy) {
+    enemy.speed = Math.random() * 2 + 1;
+  }, this);
+
+  // making it so player is alive
+  this.isPlayerAlive = true;
+
+  // adding text that says "try again" which will pop up if you lose
+  loseText = this.add.text (400,140, 'TRY AGAIN', { font: '80px Arial', fill: '#f00' });
+  // making the text not visible for now
+  loseText.visible = false;
+
+  // adding text that says "You win" which will pop up if you win
+  winnerText = this.add.text (375,100, 'YOU WIN', { font: '150px Impact', fill: '#FFFF00' });
+  // making the text not visible for now
+  winnerText.visible = false;
+
+  // resetting camera
+  this.cameras.main.resetFX();
+  };
+
+
+gameScene.update = function() {
+
+  if (!this.isPlayerAlive) {
+    return;
+  }
+
+  // check for active right cursor input
+  if (cursors.right.isDown) {
+
+    // player moves forward
+    this.player.x += this.playerSpeed;
+  }
+
+  // check for active right cursor input
+  if (cursors.left.isDown) {
+
+    // player moves backwards
+    this.player.x -= this.playerSpeed;
+  }
+
+  // I added this so player cannot escape the map
+  if (this.player.x < 23){
+    // if player goes under 23px, you will be set to 23px
+    this.player.x = 23
+  }
+
+  // if you hit the goal, you will activate the winner funciton
+  if (Phaser.Geom.Intersects.RectangleToRectangle(this.player.getBounds(), this.planet.getBounds())) {
+    this.winner();
+  }
+
+  let enemies = this.enemies.getChildren();
+  let numEnemies = enemies.length;
+
+  //setting some stuff for enemies
+  for (let i = 0; i < numEnemies; i++) {
+
+    enemies[i].y += enemies[i].speed;
+
+    if (enemies[i].y >= this.enemyMaxY && enemies[i].speed > 0) {
+      enemies[i].speed *= -1;
+    } else if (enemies[i].y <= this.enemyMinY && enemies[i].speed < 0) {
+      enemies[i].speed *= -1;
+    }
+
+    // if you hit an asteroid, you will activate the gameOver function
+    if (Phaser.Geom.Intersects.RectangleToRectangle(this.player.getBounds(), enemies[i].getBounds())) {
+      this.gameOver();
+      break;
+    }
+  }
+};
+
+gameScene.gameOver = function() {
+
+  // defines player = dead
+  this.isPlayerAlive = false;
+
+  // shakes camera
+  this.cameras.main.shake(500);
+
+  // makes it so you can see the loseText we made earlier
+  loseText.visible = true; 
+
+  // fade camera
+  this.time.delayedCall(250, function() {
+    this.cameras.main.fade(250);
+  }, [], this);
+
+  // restart game after half a sec
+  this.time.delayedCall(500, function() {
+    this.scene.start();
+  }, [], this);
+};
+
+gameScene.winner = function() {
+
+  // flag to set player = dead even thoug
+  this.isPlayerAlive = false;
+
+  // makes it so you can see the winnerText
+  winnerText.visible = true;
+
+  // fade camera after 5 sec
+  this.time.delayedCall(250, function() {
+    this.cameras.main.fade(5000);
+  }, [], this);
+
+  // restart game after 5.1 sec
+  this.time.delayedCall(5100, function() {
+    this.scene.start();
+  }, [], this);
+};
+
+</script>
+</body>
+</html>
